@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        .add-stock {
+            margin-bottom: 30px;
+        }
+
+        .add-stock {
+            position: relative;
+        }
+
+        .add-stock input {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-right: 10px;
+            width: 300px;
+        }
+
+        .autocomplete-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .autocomplete-suggestions.show {
+            display: block;
+        }
+
+        .suggestion-item {
+            padding: 10px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background-color 0.2s;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-item:hover,
+        .suggestion-item.selected {
+            background-color: #f0f0f0;
+        }
+
+        .suggestion-symbol {
+            font-weight: bold;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .suggestion-name {
+            font-size: 12px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .add-stock button {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .add-stock button:hover {
+            background-color: #0056b3;
+        }
+
+        .stocks-list {
+            list-style: none;
+        }
+
+        .stock-item {
+            padding: 15px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            background-color: #f9f9f9;
+        }
+
+        .stock-item:hover {
+            background-color: #f0f0f0;
+        }
+
+        .stock-item.loading {
+            opacity: 0.6;
+            cursor: wait;
+        }
+
+        .stock-symbol {
+            font-weight: bold;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .stock-details {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .stock-details.show {
+            display: block !important;
+            visibility: visible !important;
+        }
+
+        .detail-section {
+            margin-bottom: 15px;
+        }
+
+        .detail-section h3 {
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #666;
+        }
+
+        .price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .events-list {
+            list-style: none;
+        }
+
+        .event-item {
+            padding: 5px 0;
+            font-size: 14px;
+        }
+
+        .news-list {
+            list-style: none;
+        }
+
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .news-item:last-child {
+            border-bottom: none;
+        }
+
+        .news-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .news-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .error {
+            color: #dc3545;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Stock Tracker</h1>
+    
+    <div class="add-stock">
+        <div class="autocomplete-container">
+            <input type="text" id="symbolInput" placeholder="Enter stock symbol (e.g., RELIANCE)" autocomplete="off" />
+            <div class="autocomplete-suggestions" id="autocompleteSuggestions"></div>
+        </div>
+        <button onclick="addStock()">Add Stock</button>
+    </div>
+
+    <ul class="stocks-list" id="stocksList"></ul>
+
+    <script src="script.js"></script>
+</body>
+</html>
