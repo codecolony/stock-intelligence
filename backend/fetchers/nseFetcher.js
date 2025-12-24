@@ -432,12 +432,34 @@ async function getNSEPrice(symbol) {
       volume = parseInt(String(data.quote.volume).replace(/,/g, '')) || 0;
     }
 
+    // Extract Fundamental Ratios
+    const fundamentals = {};
+    const ratioPattern = /<li[^>]*class="[^"]*flex-space-between[^"]*"[^>]*>[\s\S]*?<span[^>]*class="name"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<span[^>]*class="nowrap value"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<\/li>/gi;
+
+    let match;
+    while ((match = ratioPattern.exec(html)) !== null) {
+      const name = match[1].trim();
+      // Clean value: remove HTML tags, extra spaces, newlines
+      let value = match[2].replace(/<[^>]+>/g, '').replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+      // Remove currency symbols (₹) but keep units like %, Cr. if desired. 
+      // Actually, let's keep it as string for display, but maybe parse if needed.
+      // The user wants to color code, so we might need numeric values.
+      // Let's store raw string for display, and a parsed numeric value for logic.
+
+      fundamentals[name] = value;
+    }
+
+    // Normalize keys to standard names if needed, or just send valid map.
+    // Common keys from screener: "Market Cap", "Current Price", "High / Low", "Stock P/E", "Book Value", "Dividend Yield", "ROCE", "ROE", "Face Value"
+
     // Normalize the response format
     const normalizedData = {
       symbol: normalizedSymbol,
       price: lastPrice || 0,
       changePercent: parseFloat(changePercent.toFixed(2)),
       volume: volume,
+      fundamentals: fundamentals,
       updatedAt: new Date().toISOString()
     };
 

@@ -258,6 +258,16 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
         }
         html += '</div>';
 
+
+
+        // Fundamental Analysis Section
+        if (priceRes.ok && priceRes.data && priceRes.data.fundamentals) {
+            html += '<div class="detail-section" style="width: 100%;">';
+            html += '<h3>Fundamental Analysis</h3>';
+            html += generateFundamentalsHtml(priceRes.data.fundamentals);
+            html += '</div>';
+        }
+
         // Technical Events
         html += '<div class="detail-section">';
         html += '<h3>Technical Events</h3>';
@@ -636,5 +646,159 @@ function renderChart(symbol, sanitizedId, chartData) {
     });
 
     stockCharts.set(symbol, chart);
+}
+
+// Generate HTML for Fundamental Analysis
+function generateFundamentalsHtml(fundamentals) {
+    if (!fundamentals || Object.keys(fundamentals).length === 0) {
+        return '<div style="color: #666;">No fundamental data available</div>';
+    }
+
+    const gridStyle = `
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 10px;
+    `;
+
+    const cardStyle = `
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        border: 1px solid #e9ecef;
+    `;
+
+    const labelStyle = `
+        font-size: 13px;
+        color: #666;
+        margin-bottom: 5px;
+    `;
+
+    const valueStyle = `
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    `;
+
+    // Ordered keys as in the screenshot/user request usually
+    const keysOfInterest = [
+        "Market Cap", "Current Price", "High / Low",
+        "Stock P/E", "Book Value", "Dividend Yield",
+        "ROCE", "ROE", "Face Value",
+        "Promoter holding", "Intrinsic Value", "Price to book value",
+        "Pledged percentage", "Industry PE", "Current ratio",
+        "Debt to equity", "No. of Share Holders", "No. Eq. Shares",
+        "NPM last year", "OPM"
+    ];
+
+    let html = `<div style="${gridStyle}">`;
+
+    // Merge available keys to ensure we show everything captured if not in list
+    const allKeys = [...new Set([...keysOfInterest, ...Object.keys(fundamentals)])];
+
+    for (const key of allKeys) {
+        if (!fundamentals[key]) continue;
+        if (key === "Current Price" || key === "High / Low") continue;
+
+        const value = fundamentals[key];
+        const color = getTrafficColor(key, value);
+        const indicatorStyle = color ? `
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: ${color};
+            display: inline-block;
+        ` : '';
+
+        html += `
+            <div style="${cardStyle}">
+                <div style="${labelStyle}">${key}</div>
+                <div style="${valueStyle}">
+                     ${value}
+                     ${indicatorStyle ? `<span style="${indicatorStyle}" title="${getColorLabel(color)}"></span>` : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    html += '</div>';
+    return html;
+}
+
+// Logic for Traffic Light Indicators
+function getTrafficColor(key, valueStr) {
+    // Parse value to number
+    // Remove commas, symbols like %, ₹, Cr.
+    const cleanStr = valueStr.replace(/,/g, '').replace(/[^\d.-]/g, '');
+    const value = parseFloat(cleanStr);
+
+    if (isNaN(value)) return null;
+
+    const lowerKey = key.toLowerCase();
+
+    // Rules
+    if (lowerKey.includes('stock p/e') || (lowerKey.includes('p/e') && !lowerKey.includes('industry'))) {
+        // P/E: < 25 Green, > 40 Red
+        if (value < 25) return '#28a745'; // Green
+        if (value > 40) return '#dc3545'; // Red
+        return '#ffc107'; // Yellow
+    }
+
+    if (lowerKey === 'roce' || lowerKey === 'roe' || lowerKey.includes('return on')) {
+        // Return ratios: > 20% Green, < 10% Red
+        if (value >= 20) return '#28a745';
+        if (value < 10) return '#dc3545';
+        return '#ffc107';
+    }
+
+    if (lowerKey === 'debt to equity' || lowerKey.includes('debt')) {
+        // Debt: < 0.5 Green, > 1.0 Red
+        if (value < 0.5) return '#28a745';
+        if (value > 1.0) return '#dc3545';
+        return '#ffc107';
+    }
+
+    if (lowerKey.includes('promoter holding')) {
+        // Higher is better usually
+        if (value > 60) return '#28a745';
+        if (value < 40) return '#dc3545';
+        return '#ffc107';
+    }
+
+    if (lowerKey.includes('pledged')) {
+        // Lower is better. 0 is best.
+        if (value === 0) return '#28a745';
+        if (value > 10) return '#dc3545';
+        return '#ffc107';
+    }
+
+    if (lowerKey.includes('dividend yield')) {
+        // Higher is better
+        if (value > 2) return '#28a745';
+        if (value < 0.5) return '#dc3545'; // Or just neutral
+        return '#ffc107';
+    }
+
+    if (lowerKey.includes('npm') || lowerKey.includes('opm') || lowerKey.includes('margin')) {
+        // Margins: > 15% Green, < 5% Red
+        if (value > 15) return '#28a745';
+        if (value < 5) return '#dc3545';
+        return '#ffc107';
+    }
+
+    return null; // No color for neutral fields
+}
+
+function getColorLabel(color) {
+    if (color === '#28a745') return 'Good';
+    if (color === '#dc3545') return 'Bad / Caution';
+    if (color === '#ffc107') return 'Average / Ok';
+    return '';
 }
 
