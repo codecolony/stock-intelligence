@@ -751,6 +751,82 @@ function generateFundamentalsHtml(fundamentals) {
         gap: 8px;
     `;
 
+    // Tooltip definitions with ideal values
+    const tooltipInfo = {
+        "Market Cap": {
+            definition: "Total market value of a company's outstanding shares. Calculated as share price × total shares.",
+            ideal: "Large Cap: >₹20,000 Cr | Mid Cap: ₹5,000-20,000 Cr | Small Cap: <₹5,000 Cr"
+        },
+        "Stock P/E": {
+            definition: "Price-to-Earnings ratio shows how much investors pay per rupee of earnings. Lower P/E may indicate undervaluation.",
+            ideal: "Ideal: 15-25 | Below 15: Potentially undervalued | Above 40: Expensive"
+        },
+        "Book Value": {
+            definition: "Net asset value per share. Represents what shareholders would receive if company liquidated all assets.",
+            ideal: "Higher is better. Stock price below book value may indicate undervaluation."
+        },
+        "Dividend Yield": {
+            definition: "Annual dividend payment as percentage of stock price. Shows income generated from investment.",
+            ideal: "Ideal: 2-6% | Above 2%: Good income stock | Above 6%: Verify sustainability"
+        },
+        "ROCE": {
+            definition: "Return on Capital Employed measures how efficiently a company generates profits from its capital.",
+            ideal: "Ideal: >15% | Above 20%: Excellent | Below 10%: Poor capital efficiency"
+        },
+        "ROE": {
+            definition: "Return on Equity shows how effectively management uses shareholders' money to generate profits.",
+            ideal: "Ideal: >15% | Above 20%: Excellent | Below 10%: Below average"
+        },
+        "Face Value": {
+            definition: "Nominal value of a share as stated in the company's charter. Used for dividend calculations.",
+            ideal: "Typically ₹1, ₹2, ₹5, or ₹10. Lower face value allows more liquidity."
+        },
+        "Promoter holding": {
+            definition: "Percentage of shares held by company founders/promoters. Shows skin in the game.",
+            ideal: "Ideal: 50-75% | Above 60%: Strong promoter confidence | Below 30%: Concern"
+        },
+        "Intrinsic Value": {
+            definition: "Estimated true value of stock based on fundamentals. Compare with current price for valuation.",
+            ideal: "Stock price below intrinsic value suggests undervaluation opportunity."
+        },
+        "Price to book value": {
+            definition: "Ratio comparing stock price to book value. Shows premium/discount to net assets.",
+            ideal: "Ideal: 1-3 | Below 1: May be undervalued | Above 4: Premium valuation"
+        },
+        "Pledged percentage": {
+            definition: "Percentage of promoter shares pledged as collateral for loans. High pledging is risky.",
+            ideal: "Ideal: 0% | Below 10%: Acceptable | Above 25%: High risk"
+        },
+        "Industry PE": {
+            definition: "Average P/E ratio of companies in the same industry. Use to compare relative valuation.",
+            ideal: "Stock P/E below Industry P/E may indicate relative undervaluation."
+        },
+        "Current ratio": {
+            definition: "Current Assets ÷ Current Liabilities. Measures ability to pay short-term obligations.",
+            ideal: "Ideal: 1.5-3 | Above 1.5: Healthy | Below 1: Liquidity concern"
+        },
+        "Debt to equity": {
+            definition: "Total Debt ÷ Shareholder Equity. Shows financial leverage and risk level.",
+            ideal: "Ideal: <0.5 | 0.5-1: Moderate | Above 1: High leverage"
+        },
+        "No. of Share Holders": {
+            definition: "Total number of shareholders. Higher count indicates broader retail participation.",
+            ideal: "Increasing trend is positive. Sharp drops may indicate large exits."
+        },
+        "No. Eq. Shares": {
+            definition: "Total number of equity shares outstanding (in Crores).",
+            ideal: "Consider along with market cap for per-share metrics."
+        },
+        "NPM last year": {
+            definition: "Net Profit Margin - Net Profit as % of Revenue. Shows profitability efficiency.",
+            ideal: "Ideal: >10% | Above 15%: Excellent | Below 5%: Thin margins"
+        },
+        "OPM": {
+            definition: "Operating Profit Margin - Operating profit as % of Revenue before interest and taxes.",
+            ideal: "Ideal: >15% | Above 20%: Strong | Below 10%: Weak operations"
+        }
+    };
+
     // Ordered keys as in the screenshot/user request usually
     const keysOfInterest = [
         "Market Cap", "Current Price", "High / Low",
@@ -773,17 +849,27 @@ function generateFundamentalsHtml(fundamentals) {
 
         const value = fundamentals[key];
         const color = getTrafficColor(key, value);
+        const tooltip = tooltipInfo[key];
+
         const indicatorStyle = color ? `
             width: 10px;
             height: 10px;
             border-radius: 50%;
             background-color: ${color};
             display: inline-block;
+            box-shadow: 0 0 6px ${color}40;
         ` : '';
 
+        const tooltipContent = tooltip ?
+            `${tooltip.definition}\n\n📊 ${tooltip.ideal}` :
+            key;
+
         html += `
-            <div style="${cardStyle}">
-                <div style="${labelStyle}">${key}</div>
+            <div style="${cardStyle}" class="fundamental-card" title="${tooltipContent.replace(/"/g, '&quot;')}">
+                <div style="${labelStyle}; display: flex; align-items: center; gap: 6px;">
+                    ${key}
+                    ${tooltip ? '<span style="opacity: 0.5; font-size: 10px;">ⓘ</span>' : ''}
+                </div>
                 <div style="${valueStyle}">
                      ${value}
                      ${indicatorStyle ? `<span style="${indicatorStyle}" title="${getColorLabel(color)}"></span>` : ''}
