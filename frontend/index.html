@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="ocean">
 
 <head>
     <meta charset="UTF-8">
@@ -10,8 +10,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
+            /* Default: Ocean Dark */
             --primary: #2563eb;
-            --primary-dark: #1d4ed8;
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
@@ -22,8 +22,64 @@
             --text-secondary: #94a3b8;
             --text-muted: #64748b;
             --border: #334155;
-            --gradient-start: #667eea;
-            --gradient-end: #764ba2;
+            --gradient-start: #3b82f6;
+            --gradient-end: #8b5cf6;
+            --accent-glow: rgba(37, 99, 235, 0.2);
+            --body-bg: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+        }
+
+        [data-theme="midnight"] {
+            --primary: #8b5cf6;
+            --bg-dark: #020617;
+            --bg-card: #0f172a;
+            --bg-card-hover: #1e293b;
+            --border: #1e293b;
+            --gradient-start: #7c3aed;
+            --gradient-end: #c026d3;
+            --accent-glow: rgba(139, 92, 246, 0.2);
+            --body-bg: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+        }
+
+        [data-theme="emerald"] {
+            --primary: #059669;
+            --bg-dark: #064e3b;
+            --bg-card: #065f46;
+            --bg-card-hover: #047857;
+            --border: #047857;
+            --gradient-start: #10b981;
+            --gradient-end: #3b82f6;
+            --accent-glow: rgba(16, 185, 129, 0.2);
+            --body-bg: linear-gradient(135deg, #064e3b 0%, #022c22 100%);
+        }
+
+        [data-theme="rose"] {
+            --primary: #e11d48;
+            --bg-dark: #4c0519;
+            --bg-card: #881337;
+            --bg-card-hover: #9f1239;
+            --border: #9f1239;
+            --gradient-start: #f43f5e;
+            --gradient-end: #8b5cf6;
+            --accent-glow: rgba(225, 29, 72, 0.2);
+            --body-bg: linear-gradient(135deg, #4c0519 0%, #2e000e 100%);
+        }
+
+        [data-theme="light"] {
+            --primary: #2563eb;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --bg-dark: #f8fafc;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f1f5f9;
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --gradient-start: #2563eb;
+            --gradient-end: #4f46e5;
+            --accent-glow: rgba(37, 99, 235, 0.1);
+            --body-bg: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
         }
 
         * {
@@ -34,15 +90,110 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            background: var(--body-bg);
+            background-attachment: fixed;
             min-height: 100vh;
             color: var(--text-primary);
             padding: 30px 20px;
+            transition: background 0.5s ease;
         }
 
         .container {
             max-width: 1200px;
             margin: 0 auto;
+            position: relative;
+        }
+
+        .settings-btn {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .settings-btn:hover {
+            background: var(--bg-card-hover);
+            transform: rotate(45deg);
+        }
+
+        .settings-menu {
+            position: absolute;
+            top: 50px;
+            right: 0;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            width: 280px;
+            display: none;
+            flex-direction: column;
+            gap: 15px;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .settings-menu.show {
+            display: flex;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .theme-option {
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background: rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            text-align: center;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .theme-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .theme-option.active {
+            border-color: var(--primary);
+            background: var(--accent-glow);
+        }
+
+        .theme-preview {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            display: flex;
         }
 
         header {
@@ -94,7 +245,7 @@
         .add-stock input:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+            box-shadow: 0 0 0 4px var(--accent-glow);
         }
 
         .add-stock input::placeholder {
@@ -164,7 +315,7 @@
 
         .add-stock button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 10px 30px var(--accent-glow);
         }
 
         .add-stock button:active {
@@ -219,10 +370,10 @@
 
         .detail-section {
             margin-bottom: 24px;
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.02);
             padding: 16px 20px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
         }
 
         .detail-section h3 {
@@ -283,7 +434,7 @@
         }
 
         .chart-container {
-            background: rgba(255, 255, 255, 0.02);
+            background: rgba(0, 0, 0, 0.1);
             border-radius: 12px;
             padding: 10px;
         }
@@ -294,7 +445,7 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
+            background: rgba(0, 0, 0, 0.1);
         }
 
         ::-webkit-scrollbar-thumb {
@@ -346,6 +497,44 @@
 
 <body>
     <div class="container">
+        <button class="settings-btn" id="settingsBtn" title="Settings">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path
+                    d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                </path>
+            </svg>
+        </button>
+
+        <div class="settings-menu" id="settingsMenu">
+            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 10px;">Personalization</h3>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 15px;">Choose your visual style</p>
+
+            <div class="theme-grid">
+                <div class="theme-option active" data-theme-id="ocean">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #0f172a, #3b82f6);"></div>
+                    Ocean
+                </div>
+                <div class="theme-option" data-theme-id="midnight">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #020617, #8b5cf6);"></div>
+                    Midnight
+                </div>
+                <div class="theme-option" data-theme-id="emerald">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #064e3b, #10b981);"></div>
+                    Emerald
+                </div>
+                <div class="theme-option" data-theme-id="rose">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #4c0519, #f43f5e);"></div>
+                    Rose
+                </div>
+                <div class="theme-option" data-theme-id="light" style="grid-column: span 2;">
+                    <div class="theme-preview" style="background: linear-gradient(135deg, #f8fafc, #2563eb);"></div>
+                    Clean Light
+                </div>
+            </div>
+        </div>
+
         <header>
             <h1>Stock Intelligence</h1>
             <p class="subtitle">Real-time stock analysis with fundamental & technical insights</p>

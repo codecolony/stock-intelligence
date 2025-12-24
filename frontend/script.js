@@ -8,14 +8,67 @@ let currentSuggestions = [];
 let selectedSuggestionIndex = -1;
 let stockCharts = new Map(); // Map to store chart instances per symbol
 
-// Initialize: Load stocks from backend on page load
+// Initialize: Load stocks and theme on page load
 async function init() {
+    initTheme();
     try {
         await loadStocks();
     } catch (error) {
         console.error('Failed to load stocks on init:', error);
         showError('Failed to load stocks. Please refresh the page.');
     }
+}
+
+// Theme Management
+function initTheme() {
+    const savedTheme = localStorage.getItem('selected-theme') || 'ocean';
+    applyTheme(savedTheme);
+
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsMenu = document.getElementById('settingsMenu');
+    const themeOptions = document.querySelectorAll('.theme-option');
+
+    // Toggle settings menu
+    settingsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        settingsMenu.classList.toggle('show');
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', () => {
+        settingsMenu.classList.remove('show');
+    });
+
+    settingsMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Handle theme selection
+    themeOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            const themeId = option.getAttribute('data-theme-id');
+            applyTheme(themeId);
+            localStorage.setItem('selected-theme', themeId);
+            settingsMenu.classList.remove('show');
+        });
+    });
+}
+
+function applyTheme(themeId) {
+    document.documentElement.setAttribute('data-theme', themeId);
+
+    // Update active state in UI
+    const themeOptions = document.querySelectorAll('.theme-option');
+    themeOptions.forEach(option => {
+        if (option.getAttribute('data-theme-id') === themeId) {
+            option.classList.add('active');
+        } else {
+            option.classList.remove('active');
+        }
+    });
+
+    // Optional: Log theme change
+    console.log(`Applied theme: ${themeId}`);
 }
 
 // Load stocks from backend
@@ -578,6 +631,13 @@ function renderChart(symbol, sanitizedId, chartData) {
         }
     });
 
+    const style = getComputedStyle(document.documentElement);
+    const primaryColor = style.getPropertyValue('--primary').trim() || '#007bff';
+    const textColor = style.getPropertyValue('--text-primary').trim() || '#333';
+    const gridColor = style.getPropertyValue('--border').trim() || 'rgba(0,0,0,0.1)';
+    const successColor = style.getPropertyValue('--success').trim() || '#10b981';
+    const dangerColor = style.getPropertyValue('--danger').trim() || '#ef4444';
+
     const chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -585,8 +645,8 @@ function renderChart(symbol, sanitizedId, chartData) {
             datasets: [{
                 label: `${symbol} Price`,
                 data: prices,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderColor: primaryColor,
+                backgroundColor: `${primaryColor}20`, // Add transparency
                 borderWidth: 2,
                 pointRadius: pointRadii,
                 pointHoverRadius: 10,
@@ -633,23 +693,27 @@ function renderChart(symbol, sanitizedId, chartData) {
             scales: {
                 x: {
                     display: true,
-                    title: {
-                        display: false
-                    },
                     grid: {
                         display: false
                     },
                     ticks: {
-                        maxTicksLimit: 12
+                        maxTicksLimit: 12,
+                        color: textColor,
+                        font: {
+                            family: 'Inter'
+                        }
                     }
                 },
                 y: {
                     display: true,
-                    title: {
-                        display: false
-                    },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: gridColor
+                    },
+                    ticks: {
+                        color: textColor,
+                        font: {
+                            family: 'Inter'
+                        }
                     }
                 }
             }
