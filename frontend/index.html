@@ -1,10 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Tracker</title>
+    <title>Stock Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --gradient-start: #667eea;
+            --gradient-end: #764ba2;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,51 +33,86 @@
         }
 
         body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            max-width: 800px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1a1a2e 100%);
+            min-height: 100vh;
+            color: var(--text-primary);
+            padding: 30px 20px;
+        }
+
+        .container {
+            max-width: 1200px;
             margin: 0 auto;
         }
 
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
         h1 {
-            margin-bottom: 20px;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 400;
         }
 
         .add-stock {
-            margin-bottom: 30px;
-        }
-
-        .add-stock {
-            position: relative;
-        }
-
-        .add-stock input {
-            padding: 8px;
-            font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            margin-right: 10px;
-            width: 300px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 40px;
         }
 
         .autocomplete-container {
             position: relative;
-            display: inline-block;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .add-stock input {
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .add-stock input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.2);
+        }
+
+        .add-stock input::placeholder {
+            color: var(--text-muted);
         }
 
         .autocomplete-suggestions {
             position: absolute;
-            top: 100%;
+            top: calc(100% + 8px);
             left: 0;
             right: 0;
-            background: white;
-            border: 1px solid #ccc;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            max-height: 300px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            max-height: 320px;
             overflow-y: auto;
             z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
             display: none;
         }
 
@@ -65,9 +121,9 @@
         }
 
         .suggestion-item {
-            padding: 10px 12px;
+            padding: 14px 18px;
             cursor: pointer;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
             transition: background-color 0.2s;
         }
 
@@ -77,50 +133,64 @@
 
         .suggestion-item:hover,
         .suggestion-item.selected {
-            background-color: #f0f0f0;
+            background-color: var(--bg-card-hover);
         }
 
         .suggestion-symbol {
-            font-weight: bold;
+            font-weight: 600;
             font-size: 14px;
-            color: #333;
+            color: var(--text-primary);
         }
 
         .suggestion-name {
             font-size: 12px;
-            color: #666;
-            margin-top: 2px;
+            color: var(--text-secondary);
+            margin-top: 3px;
         }
 
         .add-stock button {
-            padding: 8px 16px;
-            font-size: 14px;
-            background-color: #007bff;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            font-family: inherit;
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 12px;
             cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
         }
 
         .add-stock button:hover {
-            background-color: #0056b3;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .add-stock button:active {
+            transform: translateY(0);
         }
 
         .stocks-list {
             list-style: none;
+            display: grid;
+            gap: 16px;
         }
 
         .stock-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 20px 24px;
             cursor: pointer;
-            background-color: #f9f9f9;
+            transition: all 0.3s ease;
         }
 
         .stock-item:hover {
-            background-color: #f0f0f0;
+            background: var(--bg-card-hover);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
         }
 
         .stock-item.loading {
@@ -129,16 +199,17 @@
         }
 
         .stock-symbol {
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 10px;
+            font-weight: 700;
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 4px;
         }
 
         .stock-details {
             display: none;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #ddd;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
         }
 
         .stock-details.show {
@@ -147,28 +218,26 @@
         }
 
         .detail-section {
-            margin-bottom: 15px;
+            margin-bottom: 24px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         .detail-section h3 {
-            font-size: 14px;
-            margin-bottom: 5px;
-            color: #666;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            color: var(--text-muted);
         }
 
         .price {
-            font-size: 20px;
-            font-weight: bold;
-            color: #28a745;
-        }
-
-        .events-list {
-            list-style: none;
-        }
-
-        .event-item {
-            padding: 5px 0;
-            font-size: 14px;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
         }
 
         .news-list {
@@ -176,8 +245,8 @@
         }
 
         .news-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border);
         }
 
         .news-item:last-child {
@@ -185,37 +254,117 @@
         }
 
         .news-title {
-            font-weight: bold;
-            margin-bottom: 5px;
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            line-height: 1.4;
         }
 
         .news-link {
-            color: #007bff;
+            color: var(--primary);
             text-decoration: none;
             font-size: 12px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .news-link:hover {
+            color: var(--gradient-start);
         }
 
         .error {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
+            color: var(--danger);
+            font-size: 13px;
+            padding: 10px 14px;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
+        }
+
+        /* Loading animation */
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 0.6;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .stock-item.loading .stock-symbol {
+            animation: pulse 1.5s infinite;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 1.75rem;
+            }
+
+            .add-stock {
+                flex-direction: column;
+            }
+
+            .autocomplete-container {
+                max-width: 100%;
+            }
+
+            .add-stock button {
+                width: 100%;
+            }
         }
     </style>
 </head>
-<body>
-    <h1>Stock Tracker</h1>
-    
-    <div class="add-stock">
-        <div class="autocomplete-container">
-            <input type="text" id="symbolInput" placeholder="Enter stock symbol (e.g., RELIANCE)" autocomplete="off" />
-            <div class="autocomplete-suggestions" id="autocompleteSuggestions"></div>
-        </div>
-        <button onclick="addStock()">Add Stock</button>
-    </div>
 
-    <ul class="stocks-list" id="stocksList"></ul>
+<body>
+    <div class="container">
+        <header>
+            <h1>Stock Intelligence</h1>
+            <p class="subtitle">Real-time stock analysis with fundamental & technical insights</p>
+        </header>
+
+        <div class="add-stock">
+            <div class="autocomplete-container">
+                <input type="text" id="symbolInput" placeholder="Search stocks (e.g., RELIANCE, TCS)"
+                    autocomplete="off" />
+                <div class="autocomplete-suggestions" id="autocompleteSuggestions"></div>
+            </div>
+            <button onclick="addStock()">Add Stock</button>
+        </div>
+
+        <ul class="stocks-list" id="stocksList"></ul>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

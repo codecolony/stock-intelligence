@@ -204,9 +204,8 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
         // Encode symbol for URL (handles spaces and special characters)
         const encodedSymbol = encodeURIComponent(symbol);
 
-        const [priceRes, technicalsRes, newsRes, chartRes] = await Promise.all([
+        const [priceRes, newsRes, chartRes] = await Promise.all([
             fetchWithErrorHandling(`${API_BASE}/prices/${encodedSymbol}`),
-            fetchWithErrorHandling(`${API_BASE}/technicals/${encodedSymbol}`),
             fetchWithErrorHandling(`${API_BASE}/news/${encodedSymbol}`),
             fetchWithErrorHandling(`${API_BASE}/charts/${encodedSymbol}?_=${Date.now()}`)
         ]);
@@ -268,25 +267,7 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
             html += '</div>';
         }
 
-        // Technical Events
-        html += '<div class="detail-section">';
-        html += '<h3>Technical Events</h3>';
-        if (technicalsRes.ok && technicalsRes.data) {
-            const technicalsData = technicalsRes.data;
-            if (technicalsData.events && technicalsData.events.length > 0) {
-                html += '<ul class="events-list">';
-                technicalsData.events.forEach(event => {
-                    html += `<li class="event-item">${escapeHtml(event)}</li>`;
-                });
-                html += '</ul>';
-            } else {
-                html += '<div style="color: #666;">No technical events</div>';
-            }
-        } else {
-            const errorMsg = technicalsRes.error || 'Failed to fetch technical events';
-            html += `<div class="error">${errorMsg}</div>`;
-        }
-        html += '</div>';
+
 
         // News
         html += '<div class="detail-section">';
@@ -697,32 +678,33 @@ function displayTechnicalEventsList(sanitizedId, events) {
     const bearishEvents = events.filter(e => e.signal === 'bearish');
 
     const eventsHtml = `
-        <div class="technical-events-list" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                <h4 style="margin: 0; font-size: 14px; color: #333;">📊 Technical Events (${events.length} detected)</h4>
-                <div style="display: flex; gap: 15px; font-size: 12px;">
-                    <span style="color: #28a745;">🟢 Bullish: ${bullishEvents.length}</span>
-                    <span style="color: #dc3545;">🔴 Bearish: ${bearishEvents.length}</span>
+        <div class="technical-events-list" style="margin-top: 20px; padding: 20px; background: rgba(255,255,255,0.03); border-radius: 12px; border: 1px solid rgba(255,255,255,0.08);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <h4 style="margin: 0; font-size: 14px; font-weight: 600; color: #f8fafc;">📊 Technical Events (${events.length} detected)</h4>
+                <div style="display: flex; gap: 20px; font-size: 13px; font-weight: 500;">
+                    <span style="color: #10b981;">🟢 Bullish: ${bullishEvents.length}</span>
+                    <span style="color: #ef4444;">🔴 Bearish: ${bearishEvents.length}</span>
                 </div>
             </div>
-            <div style="max-height: 200px; overflow-y: auto;">
+            <div style="max-height: 240px; overflow-y: auto;">
                 ${events.slice(-15).reverse().map(event => `
-                    <div style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #e9ecef; gap: 10px;">
+                    <div style="display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06); gap: 12px; flex-wrap: wrap;">
                         <span style="
                             width: 10px;
                             height: 10px;
                             border-radius: 50%;
-                            background-color: ${event.signal === 'bullish' ? '#28a745' : '#dc3545'};
+                            background-color: ${event.signal === 'bullish' ? '#10b981' : '#ef4444'};
                             flex-shrink: 0;
+                            box-shadow: 0 0 8px ${event.signal === 'bullish' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'};
                         "></span>
-                        <span style="font-size: 12px; color: #666; min-width: 80px;">${event.date}</span>
-                        <span style="font-size: 13px; font-weight: 500; color: #333;">${event.name}</span>
-                        <span style="font-size: 12px; color: #666; flex: 1;">${event.description}</span>
-                        <span style="font-size: 12px; color: #333; font-weight: 500;">₹${event.price?.toFixed(2) || 'N/A'}</span>
+                        <span style="font-size: 12px; color: #94a3b8; min-width: 85px; font-weight: 500;">${event.date}</span>
+                        <span style="font-size: 13px; font-weight: 600; color: #f8fafc;">${event.name}</span>
+                        <span style="font-size: 12px; color: #94a3b8; flex: 1; min-width: 150px;">${event.description}</span>
+                        <span style="font-size: 13px; color: #f8fafc; font-weight: 600;">₹${event.price?.toFixed(2) || 'N/A'}</span>
                     </div>
                 `).join('')}
             </div>
-            ${events.length > 15 ? `<div style="font-size: 11px; color: #666; text-align: center; margin-top: 8px;">Showing last 15 events</div>` : ''}
+            ${events.length > 15 ? `<div style="font-size: 11px; color: #64748b; text-align: center; margin-top: 12px;">Showing last 15 events</div>` : ''}
         </div>
     `;
 
@@ -732,36 +714,38 @@ function displayTechnicalEventsList(sanitizedId, events) {
 // Generate HTML for Fundamental Analysis
 function generateFundamentalsHtml(fundamentals) {
     if (!fundamentals || Object.keys(fundamentals).length === 0) {
-        return '<div style="color: #666;">No fundamental data available</div>';
+        return '<div style="color: #94a3b8;">No fundamental data available</div>';
     }
 
     const gridStyle = `
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 15px;
-        margin-top: 10px;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
     `;
 
     const cardStyle = `
-        background: #f8f9fa;
-        padding: 12px;
-        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 14px 16px;
+        border-radius: 10px;
         display: flex;
         flex-direction: column;
         justify-content: center;
-        border: 1px solid #e9ecef;
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        transition: all 0.2s ease;
     `;
 
     const labelStyle = `
-        font-size: 13px;
-        color: #666;
-        margin-bottom: 5px;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 6px;
+        font-weight: 500;
     `;
 
     const valueStyle = `
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
-        color: #333;
+        color: #f8fafc;
         display: flex;
         align-items: center;
         gap: 8px;
@@ -826,60 +810,60 @@ function getTrafficColor(key, valueStr) {
     // Rules
     if (lowerKey.includes('stock p/e') || (lowerKey.includes('p/e') && !lowerKey.includes('industry'))) {
         // P/E: < 25 Green, > 40 Red
-        if (value < 25) return '#28a745'; // Green
-        if (value > 40) return '#dc3545'; // Red
-        return '#ffc107'; // Yellow
+        if (value < 25) return '#10b981'; // Green
+        if (value > 40) return '#ef4444'; // Red
+        return '#f59e0b'; // Yellow
     }
 
     if (lowerKey === 'roce' || lowerKey === 'roe' || lowerKey.includes('return on')) {
         // Return ratios: > 20% Green, < 10% Red
-        if (value >= 20) return '#28a745';
-        if (value < 10) return '#dc3545';
-        return '#ffc107';
+        if (value >= 20) return '#10b981';
+        if (value < 10) return '#ef4444';
+        return '#f59e0b';
     }
 
     if (lowerKey === 'debt to equity' || lowerKey.includes('debt')) {
         // Debt: < 0.5 Green, > 1.0 Red
-        if (value < 0.5) return '#28a745';
-        if (value > 1.0) return '#dc3545';
-        return '#ffc107';
+        if (value < 0.5) return '#10b981';
+        if (value > 1.0) return '#ef4444';
+        return '#f59e0b';
     }
 
     if (lowerKey.includes('promoter holding')) {
         // Higher is better usually
-        if (value > 60) return '#28a745';
-        if (value < 40) return '#dc3545';
-        return '#ffc107';
+        if (value > 60) return '#10b981';
+        if (value < 40) return '#ef4444';
+        return '#f59e0b';
     }
 
     if (lowerKey.includes('pledged')) {
         // Lower is better. 0 is best.
-        if (value === 0) return '#28a745';
-        if (value > 10) return '#dc3545';
-        return '#ffc107';
+        if (value === 0) return '#10b981';
+        if (value > 10) return '#ef4444';
+        return '#f59e0b';
     }
 
     if (lowerKey.includes('dividend yield')) {
         // Higher is better
-        if (value > 2) return '#28a745';
-        if (value < 0.5) return '#dc3545'; // Or just neutral
-        return '#ffc107';
+        if (value > 2) return '#10b981';
+        if (value < 0.5) return '#ef4444';
+        return '#f59e0b';
     }
 
     if (lowerKey.includes('npm') || lowerKey.includes('opm') || lowerKey.includes('margin')) {
         // Margins: > 15% Green, < 5% Red
-        if (value > 15) return '#28a745';
-        if (value < 5) return '#dc3545';
-        return '#ffc107';
+        if (value > 15) return '#10b981';
+        if (value < 5) return '#ef4444';
+        return '#f59e0b';
     }
 
     return null; // No color for neutral fields
 }
 
 function getColorLabel(color) {
-    if (color === '#28a745') return 'Good';
-    if (color === '#dc3545') return 'Bad / Caution';
-    if (color === '#ffc107') return 'Average / Ok';
+    if (color === '#10b981') return 'Good';
+    if (color === '#ef4444') return 'Bad / Caution';
+    if (color === '#f59e0b') return 'Average / Ok';
     return '';
 }
 
