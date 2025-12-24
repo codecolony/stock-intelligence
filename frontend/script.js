@@ -550,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
     init();
 });
 
-// Render Stock Chart using Chart.js
+// Render Stock Chart using Chart.js with Technical Events
 function renderChart(symbol, sanitizedId, chartData) {
     const canvasId = `chart-${sanitizedId}`;
     const ctx = document.getElementById(canvasId);
@@ -577,6 +577,26 @@ function renderChart(symbol, sanitizedId, chartData) {
     const dates = priceDataset.values.map(v => v[0]);
     const prices = priceDataset.values.map(v => parseFloat(v[1]));
 
+    // Process technical events
+    const technicalEvents = chartData.technicalEvents || [];
+
+    // Create point styles array - show markers only for event dates
+    const pointBackgroundColors = dates.map(() => 'transparent');
+    const pointBorderColors = dates.map(() => 'transparent');
+    const pointRadii = dates.map(() => 0);
+
+    // Map events to chart points
+    const eventMap = new Map();
+    technicalEvents.forEach(event => {
+        const dateIndex = dates.indexOf(event.date);
+        if (dateIndex !== -1) {
+            pointRadii[dateIndex] = 8;
+            pointBackgroundColors[dateIndex] = event.signal === 'bullish' ? '#28a745' : '#dc3545';
+            pointBorderColors[dateIndex] = '#fff';
+            eventMap.set(dateIndex, event);
+        }
+    });
+
     const chart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -587,8 +607,11 @@ function renderChart(symbol, sanitizedId, chartData) {
                 borderColor: '#007bff',
                 backgroundColor: 'rgba(0, 123, 255, 0.1)',
                 borderWidth: 2,
-                pointRadius: 0, // Hide points for cleaner look locally, show on hover
-                pointHoverRadius: 4,
+                pointRadius: pointRadii,
+                pointHoverRadius: 10,
+                pointBackgroundColor: pointBackgroundColors,
+                pointBorderColor: pointBorderColors,
+                pointBorderWidth: 2,
                 fill: true,
                 tension: 0.1
             }]
@@ -612,6 +635,13 @@ function renderChart(symbol, sanitizedId, chartData) {
                                 label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(context.parsed.y);
                             }
                             return label;
+                        },
+                        afterLabel: function (context) {
+                            const event = eventMap.get(context.dataIndex);
+                            if (event) {
+                                return `📊 ${event.name}: ${event.description}`;
+                            }
+                            return '';
                         }
                     }
                 },
@@ -646,6 +676,57 @@ function renderChart(symbol, sanitizedId, chartData) {
     });
 
     stockCharts.set(symbol, chart);
+
+    // Display technical events list below chart
+    displayTechnicalEventsList(sanitizedId, technicalEvents);
+}
+
+// Display technical events list below chart
+function displayTechnicalEventsList(sanitizedId, events) {
+    const chartContainer = document.getElementById(`chart-${sanitizedId}`)?.parentElement;
+    if (!chartContainer) return;
+
+    // Remove existing events list if any
+    const existingList = chartContainer.parentElement.querySelector('.technical-events-list');
+    if (existingList) existingList.remove();
+
+    if (!events || events.length === 0) return;
+
+    // Group events by type for summary
+    const bullishEvents = events.filter(e => e.signal === 'bullish');
+    const bearishEvents = events.filter(e => e.signal === 'bearish');
+
+    const eventsHtml = `
+        <div class="technical-events-list" style="margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; border: 1px solid #e9ecef;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <h4 style="margin: 0; font-size: 14px; color: #333;">📊 Technical Events (${events.length} detected)</h4>
+                <div style="display: flex; gap: 15px; font-size: 12px;">
+                    <span style="color: #28a745;">🟢 Bullish: ${bullishEvents.length}</span>
+                    <span style="color: #dc3545;">🔴 Bearish: ${bearishEvents.length}</span>
+                </div>
+            </div>
+            <div style="max-height: 200px; overflow-y: auto;">
+                ${events.slice(-15).reverse().map(event => `
+                    <div style="display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #e9ecef; gap: 10px;">
+                        <span style="
+                            width: 10px;
+                            height: 10px;
+                            border-radius: 50%;
+                            background-color: ${event.signal === 'bullish' ? '#28a745' : '#dc3545'};
+                            flex-shrink: 0;
+                        "></span>
+                        <span style="font-size: 12px; color: #666; min-width: 80px;">${event.date}</span>
+                        <span style="font-size: 13px; font-weight: 500; color: #333;">${event.name}</span>
+                        <span style="font-size: 12px; color: #666; flex: 1;">${event.description}</span>
+                        <span style="font-size: 12px; color: #333; font-weight: 500;">₹${event.price?.toFixed(2) || 'N/A'}</span>
+                    </div>
+                `).join('')}
+            </div>
+            ${events.length > 15 ? `<div style="font-size: 11px; color: #666; text-align: center; margin-top: 8px;">Showing last 15 events</div>` : ''}
+        </div>
+    `;
+
+    chartContainer.insertAdjacentHTML('afterend', eventsHtml);
 }
 
 // Generate HTML for Fundamental Analysis

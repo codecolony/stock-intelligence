@@ -98,7 +98,12 @@ function makeRequest(url, options = {}, retries = 3) {
  */
 async function getSessionCookie() {
   // Screener.in doesn't always require cookies, but we'll try to get them if needed
-  // Check if we have a valid cookie
+  // Check if we have a configured cookie from environment
+  if (process.env.SCREENER_COOKIE) {
+    return process.env.SCREENER_COOKIE;
+  }
+
+  // Check if we have a valid cached cookie
   if (sessionCookie && cookieExpiry && Date.now() < cookieExpiry) {
     return sessionCookie;
   }
@@ -255,7 +260,12 @@ async function getNSEPrice(symbol) {
 
     // Find the correct company slug
     const companySlug = await findCompanySlug(normalizedSymbol);
-    console.log(`Fetching price for ${normalizedSymbol} using slug: ${companySlug}`);
+    // Check if using cookie
+    if (cookie) {
+      console.log(`Fetching price for ${normalizedSymbol} using slug: ${companySlug} (Authenticated)`);
+    } else {
+      console.log(`Fetching price for ${normalizedSymbol} using slug: ${companySlug} (Public View - Set SCREENER_COOKIE for more data)`);
+    }
 
     // Fetch the company page HTML
     // Don't double-encode, companySlug should already be URL-safe
@@ -434,7 +444,7 @@ async function getNSEPrice(symbol) {
 
     // Extract Fundamental Ratios
     const fundamentals = {};
-    const ratioPattern = /<li[^>]*class="[^"]*flex-space-between[^"]*"[^>]*>[\s\S]*?<span[^>]*class="name"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<span[^>]*class="nowrap value"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<\/li>/gi;
+    const ratioPattern = /<li[^>]*>[\s\S]*?<span[^>]*class="name"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<span[^>]*class="nowrap value"[^>]*>([\s\S]*?)<\/span>[\s\S]*?<\/li>/gi;
 
     let match;
     while ((match = ratioPattern.exec(html)) !== null) {
@@ -450,8 +460,50 @@ async function getNSEPrice(symbol) {
       fundamentals[name] = value;
     }
 
+    // fallback: Try to extract Promoter Holding from meta description if missing
+    if (!fundamentals['Promoter holding']) {
+      const metaMatch = html.match(/<meta name="description" content="([^"]+)"/);
+      if (metaMatch) {
+        const content = metaMatch[1];
+        const promoterMatch = content.match(/Promoter Holding:\s*([\d.]+%?)/i);
+        if (promoterMatch) {
+          fundamentals['Promoter holding'] = promoterMatch[1];
+        }
+      }
+    }
+
     // Normalize keys to standard names if needed, or just send valid map.
     // Common keys from screener: "Market Cap", "Current Price", "High / Low", "Stock P/E", "Book Value", "Dividend Yield", "ROCE", "ROE", "Face Value"
+
+    // Fetch additional quick_ratios from API (only if authenticated)
+    if (cookie) {
+      try {
+        // Extract warehouse ID from HTML
+        const warehouseMatch = html.match(/data-warehouse-id="(\d+)"/);
+        if (warehouseMatch && warehouseMatch[1]) {
+          const warehouseId = warehouseMatch[1];
+          const quickRatiosUrl = `https://www.screener.in/api/company/${warehouseId}/quick_ratios/`;
+
+          const quickRatiosResponse = await makeRequest(quickRatiosUrl, { method: 'GET', headers: headers });
+          const quickRatiosHtml = typeof quickRatiosResponse.data === 'string' ? quickRatiosResponse.data : String(quickRatiosResponse.data);
+
+          // Parse quick ratios using same pattern
+          let qrMatch;
+          while ((qrMatch = ratioPattern.exec(quickRatiosHtml)) !== null) {
+            const name = qrMatch[1].trim();
+            let value = qrMatch[2].replace(/<[^>]+>/g, '').replace(/[\n\r]+/g, ' ').replace(/\s+/g, ' ').trim();
+            // Don't overwrite existing values
+            if (!fundamentals[name]) {
+              fundamentals[name] = value;
+            }
+          }
+          console.log(`Fetched ${Object.keys(fundamentals).length} fundamentals for ${normalizedSymbol}`);
+        }
+      } catch (qrError) {
+        console.error(`Error fetching quick_ratios for ${normalizedSymbol}:`, qrError.message);
+        // Continue without quick ratios - we still have the basic ones
+      }
+    }
 
     // Normalize the response format
     const normalizedData = {
