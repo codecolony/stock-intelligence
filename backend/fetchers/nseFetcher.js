@@ -21,14 +21,14 @@ function makeRequest(url, options = {}, retries = 3) {
   return new Promise((resolve, reject) => {
     const timeout = 10000; // 10 seconds timeout
     const protocol = url.startsWith('https') ? https : http;
-    
+
     const req = protocol.request(url, options, (res) => {
       let data = '';
-      
+
       res.on('data', (chunk) => {
         data += chunk;
       });
-      
+
       res.on('end', () => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           try {
@@ -62,7 +62,7 @@ function makeRequest(url, options = {}, retries = 3) {
         }
       });
     });
-    
+
     req.on('error', (error) => {
       if (retries > 0) {
         setTimeout(() => {
@@ -74,7 +74,7 @@ function makeRequest(url, options = {}, retries = 3) {
         reject(error);
       }
     });
-    
+
     req.setTimeout(timeout, () => {
       req.destroy();
       if (retries > 0) {
@@ -87,7 +87,7 @@ function makeRequest(url, options = {}, retries = 3) {
         reject(new Error('Request timeout'));
       }
     });
-    
+
     req.end();
   });
 }
@@ -102,7 +102,7 @@ async function getSessionCookie() {
   if (sessionCookie && cookieExpiry && Date.now() < cookieExpiry) {
     return sessionCookie;
   }
-  
+
   try {
     const url = 'https://www.screener.in/';
     const options = {
@@ -115,9 +115,9 @@ async function getSessionCookie() {
         'Upgrade-Insecure-Requests': '1'
       }
     };
-    
+
     const response = await makeRequest(url, options);
-    
+
     // Extract cookies from Set-Cookie header
     const setCookieHeader = response.headers['set-cookie'];
     if (setCookieHeader) {
@@ -125,12 +125,12 @@ async function getSessionCookie() {
       const cookieString = cookies
         .map(cookie => cookie.split(';')[0])
         .join('; ');
-      
+
       sessionCookie = cookieString;
       cookieExpiry = Date.now() + COOKIE_TTL;
       return sessionCookie;
     }
-    
+
     // Return empty string if no cookies needed
     return '';
   } catch (error) {
@@ -147,11 +147,11 @@ async function getSessionCookie() {
  */
 async function findCompanySlug(symbol) {
   const normalizedSymbol = symbol.toUpperCase().trim();
-  
+
   try {
     // Get session cookie
     const cookie = await getSessionCookie();
-    
+
     // Search for the company to get the correct slug
     const searchUrl = `https://www.screener.in/api/company/search/?q=${encodeURIComponent(normalizedSymbol)}`;
     const headers = {
@@ -162,14 +162,14 @@ async function findCompanySlug(symbol) {
       'Referer': 'https://www.screener.in/',
       'Origin': 'https://www.screener.in'
     };
-    
+
     if (cookie) {
       headers['Cookie'] = cookie;
     }
-    
+
     const response = await makeRequest(searchUrl, { method: 'GET', headers: headers });
     const data = response.data;
-    
+
     // Extract results
     let results = [];
     if (Array.isArray(data)) {
@@ -179,24 +179,24 @@ async function findCompanySlug(symbol) {
     } else if (data.data && Array.isArray(data.data)) {
       results = data.data;
     }
-    
+
     if (results && results.length > 0) {
       // Find exact match or first result
       const exactMatch = results.find(r => {
         const rSymbol = (r.symbol || r.code || r.ticker || r.name || '').toUpperCase();
         const rName = (r.name || '').toUpperCase();
         // Try to match symbol or name (handle partial matches for names with "LTD", "LIMITED", etc.)
-        return rSymbol === normalizedSymbol || 
-               rName === normalizedSymbol ||
-               rSymbol.includes(normalizedSymbol) ||
-               rName.includes(normalizedSymbol) ||
-               normalizedSymbol.includes(rSymbol) ||
-               normalizedSymbol.includes(rName.replace(/\s+(LTD|LIMITED|INC|INCORPORATED).*$/i, '').trim());
+        return rSymbol === normalizedSymbol ||
+          rName === normalizedSymbol ||
+          rSymbol.includes(normalizedSymbol) ||
+          rName.includes(normalizedSymbol) ||
+          normalizedSymbol.includes(rSymbol) ||
+          normalizedSymbol.includes(rName.replace(/\s+(LTD|LIMITED|INC|INCORPORATED).*$/i, '').trim());
       });
       const match = exactMatch || results[0];
-      
+
       console.log(`Found match for ${normalizedSymbol}:`, match);
-      
+
       // Get slug from match - prioritize URL extraction as it's most accurate
       if (match.url) {
         // Extract slug from URL if available (most reliable)
@@ -207,7 +207,7 @@ async function findCompanySlug(symbol) {
           return urlMatch[1];
         }
       }
-      
+
       if (match.slug) {
         console.log(`Using slug from match: ${match.slug}`);
         return match.slug;
@@ -218,7 +218,7 @@ async function findCompanySlug(symbol) {
         return slug;
       }
     }
-    
+
     // Fallback: convert symbol to slug format (remove common suffixes)
     const fallbackSlug = normalizedSymbol
       .replace(/\s+(LTD|LIMITED|INC|INCORPORATED).*$/i, '')
@@ -241,22 +241,22 @@ async function findCompanySlug(symbol) {
  */
 async function getNSEPrice(symbol) {
   const normalizedSymbol = symbol.toUpperCase().trim();
-  
+
   // Check cache first
   const cacheKey = normalizedSymbol;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     return cached.data;
   }
-  
+
   try {
     // Get session cookie (optional for screener.in)
     const cookie = await getSessionCookie();
-    
+
     // Find the correct company slug
     const companySlug = await findCompanySlug(normalizedSymbol);
     console.log(`Fetching price for ${normalizedSymbol} using slug: ${companySlug}`);
-    
+
     // Fetch the company page HTML
     // Don't double-encode, companySlug should already be URL-safe
     const url = `https://www.screener.in/company/${companySlug}/`;
@@ -268,23 +268,23 @@ async function getNSEPrice(symbol) {
       'Referer': 'https://www.screener.in/',
       'Upgrade-Insecure-Requests': '1'
     };
-    
+
     if (cookie) {
       headers['Cookie'] = cookie;
     }
-    
+
     const options = {
       method: 'GET',
       headers: headers
     };
-    
+
     const response = await makeRequest(url, options);
     const html = typeof response.data === 'string' ? response.data : String(response.data);
-    
+
     // Extract JSON data from script tags
     // Screener.in embeds company data in script tags with various patterns
     let data = null;
-    
+
     // Try multiple patterns to find embedded JSON data
     const patterns = [
       // Look for window.companyData or similar assignments
@@ -302,7 +302,7 @@ async function getNSEPrice(symbol) {
       // Look for JSON-LD structured data
       /<script[^>]*type="application\/json"[^>]*>([\s\S]+?)<\/script>/
     ];
-    
+
     for (const pattern of patterns) {
       const match = html.match(pattern);
       if (match) {
@@ -320,7 +320,7 @@ async function getNSEPrice(symbol) {
         }
       }
     }
-    
+
     // If no JSON found, try to extract price from HTML directly using more patterns
     if (!data) {
       // Look for price in various HTML structures
@@ -338,7 +338,7 @@ async function getNSEPrice(symbol) {
         // Look for price near "₹" symbol
         /₹\s*([\d,]+\.?\d*)/i
       ];
-      
+
       for (const pattern of pricePatterns) {
         const priceMatch = html.match(pattern);
         if (priceMatch) {
@@ -352,7 +352,7 @@ async function getNSEPrice(symbol) {
           }
         }
       }
-      
+
       if (!data) {
         console.error(`Could not extract data from HTML for ${normalizedSymbol}. HTML length: ${html.length}`);
         // Log a snippet of HTML for debugging
@@ -361,18 +361,18 @@ async function getNSEPrice(symbol) {
         throw new Error('Company data not found in HTML. The page structure may have changed.');
       }
     }
-    
+
     // Extract price data from various possible response structures
     let lastPrice = 0;
     let previousClose = 0;
     let changePercent = 0;
     let volume = 0;
-    
+
     // Debug: log data structure if available
     if (data && Object.keys(data).length > 0) {
       console.log(`Data keys for ${normalizedSymbol}:`, Object.keys(data).slice(0, 10));
     }
-    
+
     // Try different data structures from screener.in
     // Check nested structures first
     if (data.company && data.company.currentPrice) {
@@ -399,7 +399,7 @@ async function getNSEPrice(symbol) {
         lastPrice = marketCap / shares;
       }
     }
-    
+
     // Extract previous close
     if (data.previousClose) {
       previousClose = parseFloat(String(data.previousClose).replace(/,/g, '')) || lastPrice;
@@ -410,7 +410,7 @@ async function getNSEPrice(symbol) {
     } else {
       previousClose = lastPrice;
     }
-    
+
     // Extract change percent
     if (data.changePercent !== undefined) {
       changePercent = parseFloat(data.changePercent) || 0;
@@ -422,7 +422,7 @@ async function getNSEPrice(symbol) {
     } else if (previousClose && lastPrice && previousClose !== lastPrice) {
       changePercent = ((lastPrice - previousClose) / previousClose) * 100;
     }
-    
+
     // Extract volume
     if (data.volume) {
       volume = parseInt(String(data.volume).replace(/,/g, '')) || 0;
@@ -431,7 +431,7 @@ async function getNSEPrice(symbol) {
     } else if (data.quote && data.quote.volume) {
       volume = parseInt(String(data.quote.volume).replace(/,/g, '')) || 0;
     }
-    
+
     // Normalize the response format
     const normalizedData = {
       symbol: normalizedSymbol,
@@ -440,27 +440,98 @@ async function getNSEPrice(symbol) {
       volume: volume,
       updatedAt: new Date().toISOString()
     };
-    
+
     // Cache the result
     cache.set(cacheKey, {
       data: normalizedData,
       timestamp: Date.now()
     });
-    
+
     return normalizedData;
   } catch (error) {
     console.error(`Error fetching price from Screener.in for ${normalizedSymbol}:`, error.message);
-    
+
     // Return cached data if available, even if expired
     const staleCache = cache.get(cacheKey);
     if (staleCache) {
       console.log(`Returning stale cache for ${normalizedSymbol}`);
       return staleCache.data;
     }
-    
+
     // If all else fails, throw error
     throw new Error(`Failed to fetch price for ${normalizedSymbol}: ${error.message}`);
   }
 }
 
-module.exports = { getNSEPrice };
+
+/**
+ * Fetches historical chart data from Screener.in
+ * @param {string} symbol - Stock symbol
+ * @returns {Promise<Object>} Chart data
+ */
+async function getChartData(symbol) {
+  const normalizedSymbol = symbol.toUpperCase().trim();
+
+  // Check cache (separate cache key for charts)
+  const cacheKey = `CHART_${normalizedSymbol}`;
+  const CHART_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+
+  const cached = cache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CHART_CACHE_TTL) {
+    return cached.data;
+  }
+
+  try {
+    // Get session cookie
+    const cookie = await getSessionCookie();
+
+    // Find company slug
+    const companySlug = await findCompanySlug(normalizedSymbol);
+
+    // 1. Fetch company page to get warehouse ID
+    const companyUrl = `https://www.screener.in/company/${companySlug}/`;
+    const headers = {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+      'Connection': 'keep-alive',
+      'Referer': 'https://www.screener.in/',
+      'Upgrade-Insecure-Requests': '1'
+    };
+
+    if (cookie) {
+      headers['Cookie'] = cookie;
+    }
+
+    const pageResponse = await makeRequest(companyUrl, { method: 'GET', headers: headers });
+    const html = typeof pageResponse.data === 'string' ? pageResponse.data : String(pageResponse.data);
+
+    // Extract warehouse ID
+    const warehouseMatch = html.match(/data-warehouse-id="(\d+)"/);
+    if (!warehouseMatch || !warehouseMatch[1]) {
+      throw new Error('Could not find warehouse ID');
+    }
+
+    const warehouseId = warehouseMatch[1];
+
+    // 2. Fetch chart data
+    const chartUrl = `https://www.screener.in/api/company/${warehouseId}/chart/?q=Price-Volume&days=365`;
+    // API headers same as above
+    const chartResponse = await makeRequest(chartUrl, { method: 'GET', headers: headers });
+    const chartData = chartResponse.data;
+
+    // Cache result
+    cache.set(cacheKey, {
+      data: chartData,
+      timestamp: Date.now()
+    });
+
+    return chartData;
+
+  } catch (error) {
+    console.error(`Error fetching chart data for ${normalizedSymbol}:`, error.message);
+    throw error;
+  }
+}
+
+module.exports = { getNSEPrice, getChartData };

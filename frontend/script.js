@@ -6,6 +6,7 @@ let loadingStates = new Map(); // Track loading state per symbol
 let searchTimeout = null;
 let currentSuggestions = [];
 let selectedSuggestionIndex = -1;
+let stockCharts = new Map(); // Map to store chart instances per symbol
 
 // Initialize: Load stocks from backend on page load
 async function init() {
@@ -21,11 +22,11 @@ async function init() {
 async function loadStocks() {
     try {
         const response = await fetch(`${API_BASE}/stocks`);
-        
+
         if (!response.ok) {
             throw new Error(`Failed to fetch stocks: ${response.status} ${response.statusText}`);
         }
-        
+
         stocks = await response.json();
         renderStocks();
     } catch (error) {
@@ -38,7 +39,7 @@ async function loadStocks() {
 async function addStock() {
     const input = document.getElementById('symbolInput');
     const symbol = input.value.trim().toUpperCase();
-    
+
     if (!symbol) {
         showError('Please enter a stock symbol');
         return;
@@ -115,46 +116,43 @@ function renderStocks() {
         if (isLoading) {
             li.classList.add('loading');
         }
-        
+
         // Create the details div first with sanitized ID
         const detailsDiv = document.createElement('div');
         detailsDiv.className = 'stock-details';
         const sanitizedId = sanitizeSymbolForId(stock.symbol);
         detailsDiv.id = `details-${sanitizedId}`;
-        
+
         li.innerHTML = `
             <div class="stock-symbol">${stock.symbol}</div>
             ${stock.name && stock.name !== stock.symbol ? `<div style="font-size: 14px; color: #666; margin-bottom: 5px;">${stock.name}</div>` : ''}
         `;
-        
+
         // Append details div
         li.appendChild(detailsDiv);
-        
+
         // Attach click handler - use addEventListener for better debugging
-        li.addEventListener('click', function(e) {
+        li.addEventListener('click', function (e) {
             e.stopPropagation();
             console.log('Stock clicked:', stock.symbol, 'Element:', li);
             fetchStockData(stock.symbol, li);
         });
-        
+
         // Also add cursor pointer style
         li.style.cursor = 'pointer';
-        
+
         list.appendChild(li);
     });
 }
 
-// Utility function to sanitize symbol for use in HTML IDs
-function sanitizeSymbolForId(symbol) {
-    return symbol.replace(/[^a-zA-Z0-9-]/g, '-').replace(/-+/g, '-').toLowerCase();
-}
+
 
 // Fetch price, technicals, and news for a stock
 async function fetchStockData(symbol, element) {
     console.log('fetchStockData called for:', symbol);
     const sanitizedId = sanitizeSymbolForId(symbol);
     const detailsDiv = element.querySelector(`#details-${sanitizedId}`);
-    
+
     if (!detailsDiv) {
         console.error('Details div not found for symbol:', symbol, 'sanitized ID:', sanitizedId);
         // Try to find it by class instead
@@ -168,13 +166,13 @@ async function fetchStockData(symbol, element) {
         }
         return;
     }
-    
+
     await fetchStockDataInternal(symbol, element, detailsDiv);
 }
 
 // Internal function to fetch stock data
 async function fetchStockDataInternal(symbol, element, detailsDiv) {
-    
+
     // If already loaded and visible, toggle it
     if (detailsDiv.classList.contains('show') && detailsDiv.innerHTML.trim() !== '' && !loadingStates.get(symbol)) {
         detailsDiv.classList.remove('show');
@@ -186,8 +184,10 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
     element.classList.add('loading');
     detailsDiv.classList.add('show');
     detailsDiv.innerHTML = '<div style="padding: 10px; text-align: center;">Loading...</div>';
-    
+
     console.log('Fetching data for:', symbol);
+
+    const sanitizedId = sanitizeSymbolForId(symbol);
 
     try {
         // Fetch all data in parallel
@@ -200,15 +200,18 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
                 return { ok: false, status: 0, data: null, error: e.message };
             }
         };
-        
+
         // Encode symbol for URL (handles spaces and special characters)
         const encodedSymbol = encodeURIComponent(symbol);
-        
-        const [priceRes, technicalsRes, newsRes] = await Promise.all([
+
+        const [priceRes, technicalsRes, newsRes, chartRes] = await Promise.all([
             fetchWithErrorHandling(`${API_BASE}/prices/${encodedSymbol}`),
             fetchWithErrorHandling(`${API_BASE}/technicals/${encodedSymbol}`),
-            fetchWithErrorHandling(`${API_BASE}/news/${encodedSymbol}`)
+            fetchWithErrorHandling(`${API_BASE}/news/${encodedSymbol}`),
+            fetchWithErrorHandling(`${API_BASE}/charts/${encodedSymbol}?_=${Date.now()}`)
         ]);
+
+        console.log(`Requested chart from: ${API_BASE}/charts/${encodedSymbol}`);
 
         let html = '';
 
@@ -220,14 +223,14 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
             console.log('Price data received:', priceData);
             if (priceData.price !== undefined && priceData.price > 0) {
                 html += `<div class="price">₹${priceData.price.toFixed(2)}</div>`;
-                
+
                 // Show change percent if available
                 if (priceData.changePercent !== undefined) {
                     const changeColor = priceData.changePercent >= 0 ? '#28a745' : '#dc3545';
                     const changeSymbol = priceData.changePercent >= 0 ? '+' : '';
                     html += `<div style="font-size: 14px; color: ${changeColor}; margin-top: 5px;">${changeSymbol}${priceData.changePercent.toFixed(2)}%</div>`;
                 }
-                
+
                 // Show volume if available
                 if (priceData.volume && priceData.volume > 0) {
                     const volumeFormatted = priceData.volume.toLocaleString('en-IN');
@@ -239,6 +242,18 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
         } else {
             const errorMsg = priceRes.error || `Failed to fetch price (Status: ${priceRes.status || 'Unknown'})`;
             console.error('Price fetch error:', errorMsg);
+            html += `<div class="error">${errorMsg}</div>`;
+        }
+        html += '</div>';
+
+        // Chart Section
+        html += '<div class="detail-section" style="width: 100%;">';
+        html += '<h3>1 Year Price Chart</h3>';
+        html += '<div class="chart-container" style="position: relative; height: 300px; width: 100%;">';
+        html += `<canvas id="chart-${sanitizedId}"></canvas>`;
+        html += '</div>';
+        if (!chartRes.ok || !chartRes.data) {
+            const errorMsg = chartRes.error || 'Failed to fetch chart data';
             html += `<div class="error">${errorMsg}</div>`;
         }
         html += '</div>';
@@ -293,12 +308,23 @@ async function fetchStockDataInternal(symbol, element, detailsDiv) {
 
         detailsDiv.innerHTML = html;
         console.log('Details HTML set for:', symbol, 'HTML length:', html.length);
-        
+
+        detailsDiv.innerHTML = html;
+        console.log('Details HTML set for:', symbol, 'HTML length:', html.length);
+
+        // Render Chart if data available
+        if (chartRes.ok && chartRes.data) {
+            // Need to wait for DOM update
+            setTimeout(() => {
+                renderChart(symbol, sanitizedId, chartRes.data);
+            }, 0);
+        }
+
         // Ensure the details div is visible
         if (!detailsDiv.classList.contains('show')) {
             detailsDiv.classList.add('show');
         }
-        
+
         // Force a reflow to ensure display
         detailsDiv.offsetHeight;
     } catch (error) {
@@ -325,18 +351,18 @@ function escapeHtml(text) {
 function showError(message) {
     // Remove existing error
     clearError();
-    
+
     // Create error element
     const errorDiv = document.createElement('div');
     errorDiv.id = 'errorMessage';
     errorDiv.className = 'error';
     errorDiv.style.cssText = 'background-color: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; padding: 10px; margin-bottom: 20px; border-radius: 4px;';
     errorDiv.textContent = message;
-    
+
     // Insert before the add-stock section
     const addStockDiv = document.querySelector('.add-stock');
     addStockDiv.parentNode.insertBefore(errorDiv, addStockDiv);
-    
+
     // Auto-hide after 5 seconds
     setTimeout(() => {
         clearError();
@@ -363,7 +389,7 @@ async function searchStocks(query) {
         if (!response.ok) {
             throw new Error('Search failed');
         }
-        
+
         const suggestions = await response.json();
         currentSuggestions = suggestions;
         displaySuggestions(suggestions);
@@ -376,19 +402,19 @@ async function searchStocks(query) {
 // Display autocomplete suggestions
 function displaySuggestions(suggestions) {
     const suggestionsDiv = document.getElementById('autocompleteSuggestions');
-    
+
     if (!suggestions || suggestions.length === 0) {
         hideSuggestions();
         return;
     }
-    
+
     suggestionsDiv.innerHTML = '';
     suggestions.forEach((suggestion, index) => {
         const item = document.createElement('div');
         item.className = 'suggestion-item';
         item.innerHTML = `
             <div class="suggestion-symbol">${escapeHtml(suggestion.symbol)}</div>
-            ${suggestion.name && suggestion.name !== suggestion.symbol ? 
+            ${suggestion.name && suggestion.name !== suggestion.symbol ?
                 `<div class="suggestion-name">${escapeHtml(suggestion.name)}</div>` : ''}
         `;
         item.onclick = () => selectSuggestion(suggestion);
@@ -398,7 +424,7 @@ function displaySuggestions(suggestions) {
         };
         suggestionsDiv.appendChild(item);
     });
-    
+
     suggestionsDiv.classList.add('show');
     selectedSuggestionIndex = -1;
 }
@@ -436,14 +462,14 @@ function updateSelectedSuggestion() {
 // Handle keyboard navigation in autocomplete
 function handleAutocompleteKeydown(e) {
     const suggestionsDiv = document.getElementById('autocompleteSuggestions');
-    
+
     if (!suggestionsDiv.classList.contains('show') || currentSuggestions.length === 0) {
         if (e.key === 'Enter') {
             addStock();
         }
         return;
     }
-    
+
     switch (e.key) {
         case 'ArrowDown':
             e.preventDefault();
@@ -475,41 +501,140 @@ document.addEventListener('DOMContentLoaded', () => {
     const symbolInput = document.getElementById('symbolInput');
     if (symbolInput) {
         // Handle input for autocomplete
-        symbolInput.addEventListener('input', function(e) {
+        symbolInput.addEventListener('input', function (e) {
             const query = e.target.value.trim();
-            
+
             // Clear previous timeout
             if (searchTimeout) {
                 clearTimeout(searchTimeout);
             }
-            
+
             // Debounce search (wait 300ms after user stops typing)
             searchTimeout = setTimeout(() => {
                 searchStocks(query);
             }, 300);
         });
-        
+
         // Handle keyboard events
         symbolInput.addEventListener('keydown', handleAutocompleteKeydown);
-        
+
         // Hide suggestions when clicking outside
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', function (e) {
             const suggestionsDiv = document.getElementById('autocompleteSuggestions');
             const autocompleteContainer = document.querySelector('.autocomplete-container');
             if (!autocompleteContainer.contains(e.target)) {
                 hideSuggestions();
             }
         });
-        
+
         // Handle Enter key for adding stock (fallback, main handling is in handleAutocompleteKeydown)
-        symbolInput.addEventListener('keypress', function(e) {
+        symbolInput.addEventListener('keypress', function (e) {
             const suggestionsDiv = document.getElementById('autocompleteSuggestions');
             if (e.key === 'Enter' && !suggestionsDiv.classList.contains('show')) {
                 addStock();
             }
         });
     }
-    
+
     // Initialize the app
     init();
 });
+
+// Render Stock Chart using Chart.js
+function renderChart(symbol, sanitizedId, chartData) {
+    const canvasId = `chart-${sanitizedId}`;
+    const ctx = document.getElementById(canvasId);
+
+    if (!ctx) {
+        console.error('Canvas element not found:', canvasId);
+        return;
+    }
+
+    // Destroy existing chart if any
+    if (stockCharts.has(symbol)) {
+        stockCharts.get(symbol).destroy();
+    }
+
+    // Process data
+    // chartData.datasets[0] is usually Price
+    const priceDataset = chartData.datasets.find(d => d.metric === 'Price');
+    if (!priceDataset) {
+        console.error('No price dataset found for', symbol);
+        ctx.parentNode.innerHTML = '<div class="error">No price data available for chart</div>';
+        return;
+    }
+
+    const dates = priceDataset.values.map(v => v[0]);
+    const prices = priceDataset.values.map(v => parseFloat(v[1]));
+
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dates,
+            datasets: [{
+                label: `${symbol} Price`,
+                data: prices,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 2,
+                pointRadius: 0, // Hide points for cleaner look locally, show on hover
+                pointHoverRadius: 4,
+                fill: true,
+                tension: 0.1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function (context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            if (context.parsed.y !== null) {
+                                label += new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(context.parsed.y);
+                            }
+                            return label;
+                        }
+                    }
+                },
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: false
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        maxTicksLimit: 12
+                    }
+                },
+                y: {
+                    display: true,
+                    title: {
+                        display: false
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    }
+                }
+            }
+        }
+    });
+
+    stockCharts.set(symbol, chart);
+}
+

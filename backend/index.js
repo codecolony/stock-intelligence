@@ -10,6 +10,8 @@ const technicalsRouter = require('./routes/technicals');
 const newsRouter = require('./routes/news');
 // Import and mount the search routes under /api
 const searchRouter = require('./routes/search');
+// Import and mount the charts routes under /api
+const chartsRouter = require('./routes/charts');
 
 const app = express();
 const PORT = 3001;
@@ -31,6 +33,7 @@ app.use('/api', pricesRouter);
 app.use('/api', technicalsRouter);
 app.use('/api', newsRouter);
 app.use('/api', searchRouter);
+app.use('/api/charts', chartsRouter);
 
 // Start server
 app.listen(PORT, () => {
