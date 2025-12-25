@@ -14,11 +14,19 @@ const searchRouter = require('./routes/search');
 // Import and mount the charts routes under /api
 const chartsRouter = require('./routes/charts');
 
+const cookieParser = require('cookie-parser');
+const authMiddleware = require('./middleware/authMiddleware');
+
+// Import new routes
+const authRouter = require('./routes/auth');
+const adminRouter = require('./routes/admin');
+
 const app = express();
 const PORT = 3001;
 
-// Enable JSON body parsing
+// Enable JSON body parsing and cookies
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve static files from the frontend directory
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
@@ -28,13 +36,19 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
 });
 
-// Mount them under /api
-app.use('/api', stocksRouter);
-app.use('/api', pricesRouter);
-app.use('/api', technicalsRouter);
-app.use('/api', newsRouter);
-app.use('/api', searchRouter);
-app.use('/api/charts', chartsRouter);
+// Public API routes
+app.use('/api/auth', authRouter);
+
+// Protected API routes
+app.use('/api', authMiddleware, stocksRouter);
+app.use('/api', authMiddleware, pricesRouter);
+app.use('/api', authMiddleware, technicalsRouter);
+app.use('/api', authMiddleware, newsRouter);
+app.use('/api', authMiddleware, searchRouter);
+app.use('/api/charts', authMiddleware, chartsRouter);
+
+// Admin routes
+app.use('/api/admin', adminRouter);
 
 // Start server
 app.listen(PORT, () => {
