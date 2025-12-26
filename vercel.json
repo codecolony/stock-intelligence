@@ -1,15 +1,16 @@
 {
     "version": 2,
-    "builds": [
+    "rewrites": [
         {
-            "src": "backend/index.js",
-            "use": "@vercel/node"
+            "source": "/api/(.*)",
+            "destination": "backend/index.js"
+        },
+        {
+            "source": "/(?!api).*",
+            "destination": "frontend/index.html"
         }
     ],
-    "routes": [
-        {
-            "src": "/(.*)",
-            "dest": "backend/index.js"
-        }
+    "ignore": [
+        "users.db"
     ]
 }

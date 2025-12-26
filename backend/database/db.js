@@ -1,4 +1,9 @@
-const sqlite3 = require('sqlite3').verbose();
+let sqlite3;
+try {
+  sqlite3 = require('sqlite3').verbose();
+} catch (e) {
+  console.error('❌ CRITICAL: Failed to load sqlite3 binary module. Running without DB.');
+}
 const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
@@ -10,18 +15,20 @@ let dbPath = path.resolve(__dirname, '../../users.db');
 
 if (isProduction) {
   const tmpPath = path.join('/tmp', 'users.db');
-  // Copy existing DB if it exists (for initial seeding) though /tmp is ephemeral
   dbPath = tmpPath;
 }
 
-console.log(`📡 Database attempt: ${dbPath} `);
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('❌ Database opening error:', err.message);
-  } else {
-    console.log('✅ Connected to the SQLite database.');
-  }
-});
+console.log(`📡 Database attempt: ${dbPath}`);
+let db;
+if (sqlite3) {
+  db = new sqlite3.Database(dbPath, (err) => {
+    if (err) {
+      console.error('❌ Database opening error:', err.message);
+    } else {
+      console.log('✅ Connected to the SQLite database.');
+    }
+  });
+}
 
 // Helper to run queries with promises
 const run = (sql, params = []) => {
