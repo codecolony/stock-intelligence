@@ -50,7 +50,12 @@ app.use('/api/charts', authMiddleware, chartsRouter);
 // Admin routes
 app.use('/api/admin', adminRouter);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
-});
+// Export for Vercel/Serverless
+module.exports = app;
+
+// Only start the server if we're not being required as a module (e.g., in local dev)
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}`);
+  });
+}
