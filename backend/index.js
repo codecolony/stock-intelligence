@@ -29,7 +29,18 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Serve static files from the frontend directory
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+const frontendPath = path.join(__dirname, '..', 'frontend');
+const fallbackFrontendPath = path.join(process.cwd(), 'frontend');
+
+if (fs.existsSync(frontendPath)) {
+  console.log(`📂 Serving static files from: ${frontendPath}`);
+  app.use(express.static(frontendPath));
+} else if (fs.existsSync(fallbackFrontendPath)) {
+  console.log(`📂 Serving static files from Fallback: ${fallbackFrontendPath}`);
+  app.use(express.static(fallbackFrontendPath));
+} else {
+  console.error('❌ Could not find frontend directory!');
+}
 
 // Health check route
 app.get('/health', (req, res) => {
