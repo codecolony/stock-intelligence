@@ -1,1 +1,8 @@
-backend/node_modules/
+node_modules/
+.env
+*.db
+*.db-journal
+*.sqlite
+.DS_Store
+dist/
+build/
