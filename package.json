@@ -1,0 +1,12 @@
+{
+    "name": "stock-intelligence",
+    "version": "1.0.0",
+    "description": "Fullstack stock intelligence platform",
+    "scripts": {
+        "start": "cd backend && npm install && node index.js",
+        "install-all": "npm install && cd backend && npm install"
+    },
+    "engines": {
+        "node": ">=16.0.0"
+    }
+}
