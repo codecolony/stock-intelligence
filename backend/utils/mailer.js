@@ -1,81 +1,94 @@
 const nodemailer = require('nodemailer');
 const { Resend } = require('resend');
 
+// Initialize providers if keys exist
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 
 async function sendVerificationCode(email, code) {
     const smtpUser = process.env.EMAIL_USER;
     const smtpPass = process.env.EMAIL_PASS;
-    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev'; // Resend default for testing
+    const postmarkToken = process.env.POSTMARK_TOKEN;
+    const sendgridApiKey = process.env.SENDGRID_API_KEY;
 
-    console.log(`\n📧 [MAILER] Sending verification to ${email} (Code: ${code})`);
+    // Fallback logic for specialized providers
+    const fromEmail = process.env.EMAIL_FROM || 'onboarding@resend.dev';
+
+    console.log(`\n📧 [MAILER] Destination: ${email} | Code: ${code}`);
 
     try {
-        // 1. Try Resend API first (Fastest/Reliable for Serverless)
+        // 1. Try Resend API
         if (resend) {
-            console.log('🚀 Attempting to send via Resend API...');
-
-            // Note: If domain is not verified, Resend only allows sending from onboarding@resend.dev
-            // AND only to the email address used to sign up for Resend.
+            console.log('🚀 Sending via Resend...');
             const { data, error } = await resend.emails.send({
                 from: `Stock Intelligence <${fromEmail}>`,
                 to: email,
                 subject: 'Account Verification Code',
-                html: `<strong>Your verification code is: ${code}</strong>`
+                html: `<div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+                        <h2 style="color: #2563eb;">Verify your account</h2>
+                        <p style="color: #666;">Enter this code to complete your registration:</p>
+                        <h1 style="background: #f8fafc; padding: 20px; text-align: center; letter-spacing: 5px; color: #1e293b; border-radius: 8px;">${code}</h1>
+                       </div>`
             });
 
             if (error) {
-                console.error('❌ Resend API Error:', error);
-                // Fallback to SMTP if Resend fails
+                console.error('❌ Resend Error Details:', error);
+                // Continue to try other methods if Resend fails
             } else {
-                console.log('✅ Resend API success:', data);
+                console.log('✅ Resend success:', data);
                 return;
             }
         }
 
-        // 2. Fallback to SMTP
+        // 2. Try Postmark (if connected via Netlify Emails)
+        if (postmarkToken) {
+            console.log('📬 Using Postmark SMTP...');
+            const transporter = nodemailer.createTransport({
+                host: 'smtp.postmarkapp.com',
+                port: 587,
+                auth: { user: postmarkToken, pass: postmarkToken }
+            });
+            await transporter.sendMail({
+                from: fromEmail,
+                to: email,
+                subject: "Account Verification Code",
+                text: `Your code is ${code}`,
+                html: `<strong>${code}</strong>`
+            });
+            console.log('✅ Postmark success');
+            return;
+        }
+
+        // 3. Fallback to Standard SMTP (Gmail, SendGrid, etc.)
         let transporter;
         if (smtpUser && smtpPass) {
-            console.log('📡 Using Real SMTP');
+            console.log('📡 Using SMTP...');
             transporter = nodemailer.createTransport({
                 host: process.env.EMAIL_HOST || 'smtp.gmail.com',
                 port: process.env.EMAIL_PORT || 587,
-                secure: process.env.EMAIL_PORT == 465,
                 auth: { user: smtpUser, pass: smtpPass },
             });
         } else {
-            // 3. Development / Ethereal Fallback
-            console.log('🧪 Using Ethereal (Dev Fallback)');
-            let testAccount = await nodemailer.createTestAccount();
+            console.log('🧪 Using Ethereal Dev Fallback...');
+            const testAccount = await nodemailer.createTestAccount();
             transporter = nodemailer.createTransport({
                 host: "smtp.ethereal.email",
                 port: 587,
-                secure: false,
                 auth: { user: testAccount.user, pass: testAccount.pass },
             });
         }
 
-        let info = await transporter.sendMail({
-            from: '"Stock Intelligence" <no-reply@stockintel.com>',
+        const info = await transporter.sendMail({
+            from: `"Stock Intelligence" <${fromEmail}>`,
             to: email,
-            subject: "Account Verification Code",
-            text: `Your verification code is: ${code}`,
-            html: `
-                <div style="font-family: sans-serif; padding: 20px; color: #333;">
-                    <h2>Welcome to Stock Intelligence</h2>
-                    <p>Use the following code to verify your account:</p>
-                    <div style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #2563eb; margin: 20px 0;">
-                        ${code}
-                    </div>
-                </div>
-            `,
+            subject: "Verification Code",
+            html: `Your code: <b>${code}</b>`
         });
 
-        if (!smtpUser) {
-            console.log(`🌐 Ethereal Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
-        }
+        if (!smtpUser) console.log(`🌐 Preview URL: ${nodemailer.getTestMessageUrl(info)}`);
+        console.log('✅ Method completion');
+
     } catch (err) {
-        console.error('❌ Mailer error:', err.message);
+        console.error('🔥 FINAL Mailer failure:', err.message);
     }
 }
 
