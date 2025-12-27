@@ -97,11 +97,13 @@ const all = (sql, params = []) => {
   });
 };
 
+// Initialized engine state
 async function init() {
   if (!db) return;
 
   try {
     const idType = engine === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
+    const timestampType = engine === 'postgres' ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP';
 
     await run(`
             CREATE TABLE IF NOT EXISTS users (
@@ -112,7 +114,7 @@ async function init() {
                 verification_code TEXT,
                 is_admin INTEGER DEFAULT 0,
                 is_disabled INTEGER DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at ${timestampType}
             )
         `);
 
@@ -122,7 +124,7 @@ async function init() {
                 user_id INTEGER NOT NULL,
                 symbol TEXT NOT NULL,
                 name TEXT,
-                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                added_at ${timestampType},
                 UNIQUE(user_id, symbol)
             )
         `);
@@ -136,7 +138,7 @@ async function init() {
       if (!user) {
         const hashed = bcrypt.hashSync(adminPassword, 10);
         await run('INSERT INTO users (email, password, is_verified, is_admin) VALUES (?, ?, 1, 1)', [adminEmail, hashed]);
-        console.log('✅ Production Admin Created');
+        console.log(`✅ Production Admin Created: ${adminEmail}`);
       }
     }
   } catch (err) {
@@ -146,4 +148,4 @@ async function init() {
 
 init();
 
-module.exports = { run, get, all, db };
+module.exports = { run, get, all, db, engine };

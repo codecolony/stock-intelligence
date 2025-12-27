@@ -45,13 +45,13 @@ app.get('/health', (req, res) => {
 app.get('/api/ping', async (req, res) => {
   try {
     const dbStatus = require('./database/db');
-    const isDbReady = !!dbStatus.db;
     res.json({
       message: 'pong',
       timestamp: new Date(),
-      database: isDbReady ? 'Ready' : 'Unavailable (Binary Load Failure)',
+      database: dbStatus.db ? 'Ready' : 'Unavailable',
+      engine: dbStatus.engine,
       env: process.env.NODE_ENV,
-      netlify: !!process.env.NETLIFY
+      isNetlify: !!(process.env.NETLIFY || process.env.NETLIFY_ID)
     });
   } catch (e) {
     res.json({ message: 'pong', error: e.message });
