@@ -141,11 +141,12 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (err) {
-        console.error('❌ Login exception:', err.message);
-        const errorMsg = err.message === 'DATABASE_NOT_AVAILABLE'
-            ? 'Database is currently unavailable on this server'
-            : 'Server error during login';
-        res.status(500).json({ error: errorMsg, details: err.message });
+        console.error('❌ Login Error:', err);
+        res.status(500).json({
+            error: 'Server error during login',
+            details: err.message,
+            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+        });
     }
 });
 

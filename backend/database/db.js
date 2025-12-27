@@ -97,11 +97,11 @@ const all = (sql, params = []) => {
   });
 };
 
-// Initialized engine state
 async function init() {
   if (!db) return;
 
   try {
+    console.log('🏗️  Initializing database schema...');
     const idType = engine === 'postgres' ? 'SERIAL PRIMARY KEY' : 'INTEGER PRIMARY KEY AUTOINCREMENT';
     const timestampType = engine === 'postgres' ? 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP' : 'DATETIME DEFAULT CURRENT_TIMESTAMP';
 
@@ -136,9 +136,10 @@ async function init() {
     if (adminEmail && adminPassword) {
       const user = await get('SELECT * FROM users WHERE email = ?', [adminEmail]);
       if (!user) {
+        console.log(`👤 Creating first admin: ${adminEmail}...`);
         const hashed = bcrypt.hashSync(adminPassword, 10);
         await run('INSERT INTO users (email, password, is_verified, is_admin) VALUES (?, ?, 1, 1)', [adminEmail, hashed]);
-        console.log(`✅ Production Admin Created: ${adminEmail}`);
+        console.log('✅ Admin account seeded successfully.');
       }
     }
   } catch (err) {
@@ -146,6 +147,6 @@ async function init() {
   }
 }
 
-init();
+init().catch(err => console.error('🔥 Critical DB Init Failure:', err));
 
 module.exports = { run, get, all, db, engine };
