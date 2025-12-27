@@ -50,7 +50,11 @@ app.use('/api/charts', authMiddleware, chartsRouter);
 // Admin routes
 app.use('/api/admin', adminRouter);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server started on http://localhost:${PORT}`);
-});
+// Export the app for serverless deployment
+module.exports = app;
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Server started on http://localhost:${PORT}`);
+  });
+}
