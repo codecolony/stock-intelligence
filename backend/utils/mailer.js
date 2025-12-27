@@ -13,14 +13,24 @@ async function sendVerificationCode(email, code) {
     try {
         // 1. Try Resend API first (Fastest/Reliable for Serverless)
         if (resend) {
-            console.log('🚀 Using Resend API');
-            await resend.emails.send({
+            console.log('🚀 Attempting to send via Resend API...');
+
+            // Note: If domain is not verified, Resend only allows sending from onboarding@resend.dev
+            // AND only to the email address used to sign up for Resend.
+            const { data, error } = await resend.emails.send({
                 from: `Stock Intelligence <${fromEmail}>`,
                 to: email,
                 subject: 'Account Verification Code',
                 html: `<strong>Your verification code is: ${code}</strong>`
             });
-            return;
+
+            if (error) {
+                console.error('❌ Resend API Error:', error);
+                // Fallback to SMTP if Resend fails
+            } else {
+                console.log('✅ Resend API success:', data);
+                return;
+            }
         }
 
         // 2. Fallback to SMTP

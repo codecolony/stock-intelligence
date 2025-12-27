@@ -29,10 +29,11 @@ router.post('/register', async (req, res) => {
 
         res.status(201).json({ message: 'Registration successful. Please verify your email.' });
     } catch (err) {
-        if (err.message.includes('UNIQUE constraint failed')) {
+        console.error('❌ Registration Error:', err);
+        if (err.message.includes('UNIQUE constraint failed') || err.code === '23505') {
             return res.status(400).json({ error: 'Email already registered' });
         }
-        res.status(500).json({ error: 'Server error during registration' });
+        res.status(500).json({ error: 'Server error during registration', details: err.message });
     }
 });
 
