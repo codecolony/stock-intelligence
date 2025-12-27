@@ -34,6 +34,7 @@ if (sqlite3) {
 // Helper to run queries with promises
 const run = (sql, params = []) => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('DATABASE_NOT_AVAILABLE'));
     db.run(sql, params, function (err) {
       if (err) reject(err);
       else resolve(this);
@@ -43,6 +44,7 @@ const run = (sql, params = []) => {
 
 const get = (sql, params = []) => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('DATABASE_NOT_AVAILABLE'));
     db.get(sql, params, (err, row) => {
       if (err) reject(err);
       else resolve(row);
@@ -52,6 +54,7 @@ const get = (sql, params = []) => {
 
 const all = (sql, params = []) => {
   return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('DATABASE_NOT_AVAILABLE'));
     db.all(sql, params, (err, rows) => {
       if (err) reject(err);
       else resolve(rows);

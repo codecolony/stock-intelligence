@@ -28,12 +28,22 @@ const PORT = 3001;
 app.use(express.json());
 app.use(cookieParser());
 
+// Request logger for debugging deployment
+app.use((req, res, next) => {
+  console.log(`🌐 [${req.method}] ${req.url}`);
+  next();
+});
+
 // Serve static files from the frontend directory
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // Health check route
 app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
+});
+
+app.get('/api/ping', (req, res) => {
+  res.json({ message: 'pong', timestamp: new Date(), env: process.env.NODE_ENV });
 });
 
 // Public API routes
@@ -49,6 +59,12 @@ app.use('/api/charts', authMiddleware, chartsRouter);
 
 // Admin routes
 app.use('/api/admin', adminRouter);
+
+// 404 Catch-all for API
+app.use('/api/*', (req, res) => {
+  console.warn(`⚠️ 404 Not Found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: `Path ${req.originalUrl} not found on this server` });
+});
 
 // Export the app for serverless deployment
 module.exports = app;
