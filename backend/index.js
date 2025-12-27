@@ -42,8 +42,20 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK' });
 });
 
-app.get('/api/ping', (req, res) => {
-  res.json({ message: 'pong', timestamp: new Date(), env: process.env.NODE_ENV });
+app.get('/api/ping', async (req, res) => {
+  try {
+    const dbStatus = require('./database/db');
+    const isDbReady = !!dbStatus.db;
+    res.json({
+      message: 'pong',
+      timestamp: new Date(),
+      database: isDbReady ? 'Ready' : 'Unavailable (Binary Load Failure)',
+      env: process.env.NODE_ENV,
+      netlify: !!process.env.NETLIFY
+    });
+  } catch (e) {
+    res.json({ message: 'pong', error: e.message });
+  }
 });
 
 // Public API routes

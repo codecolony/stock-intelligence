@@ -89,11 +89,18 @@ router.post('/resend-code', async (req, res) => {
 // Login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
+    console.log(`🔑 Login attempt for: ${email}`);
 
     try {
+        if (!JWT_SECRET) {
+            console.error('❌ CRITICAL: JWT_SECRET is not defined in environment variables.');
+            return res.status(500).json({ error: 'Server configuration error (JWT)' });
+        }
+
         const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
 
         if (!user) {
+            console.warn(`⚠️ User not found: ${email}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -108,6 +115,7 @@ router.post('/login', async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
+            console.warn(`⚠️ Password mismatch for: ${email}`);
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
@@ -119,10 +127,12 @@ router.post('/login', async (req, res) => {
 
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: true, // Always true for Netlify (HTTPS)
+            sameSite: 'lax',
             maxAge: 24 * 60 * 60 * 1000
         });
 
+        console.log(`✅ Login successful: ${email}`);
         res.json({
             message: 'Login successful',
             user: {
@@ -131,7 +141,11 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (err) {
-        res.status(500).json({ error: 'Server error during login' });
+        console.error('❌ Login exception:', err.message);
+        const errorMsg = err.message === 'DATABASE_NOT_AVAILABLE'
+            ? 'Database is currently unavailable on this server'
+            : 'Server error during login';
+        res.status(500).json({ error: errorMsg, details: err.message });
     }
 });
 
